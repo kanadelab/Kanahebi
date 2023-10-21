@@ -5,11 +5,26 @@
 #include <sstream>
 #include <vector>
 
+//ハンドル類
+HANDLE outputWritePipe = INVALID_HANDLE_VALUE;
+HANDLE outputReadPipe = INVALID_HANDLE_VALUE;
+HANDLE inputWritePipe = INVALID_HANDLE_VALUE;
+HANDLE inputReadPipe = INVALID_HANDLE_VALUE;
+HANDLE childWritePipe = INVALID_HANDLE_VALUE;
+HANDLE readCompletedEvent = INVALID_HANDLE_VALUE;
+HANDLE readBeginEvent = INVALID_HANDLE_VALUE;
+HANDLE readThreadEndEvent = INVALID_HANDLE_VALUE;
+HANDLE readThreadHandle = INVALID_HANDLE_VALUE;
+HANDLE processHandle = INVALID_HANDLE_VALUE;
+HANDLE jobObject = INVALID_HANDLE_VALUE;
+HMODULE dllHandle;
+
 BOOL APIENTRY DllMain(HMODULE hModule,
 	DWORD  ul_reason_for_call,
 	LPVOID lpReserved
 )
 {
+	dllHandle = hModule;
 	switch (ul_reason_for_call)
 	{
 	case DLL_PROCESS_ATTACH:
@@ -23,19 +38,6 @@ BOOL APIENTRY DllMain(HMODULE hModule,
 
 
 DWORD WINAPI PipeReadThread(void*);
-
-//ハンドル類
-HANDLE outputWritePipe = INVALID_HANDLE_VALUE;
-HANDLE outputReadPipe = INVALID_HANDLE_VALUE;
-HANDLE inputWritePipe = INVALID_HANDLE_VALUE;
-HANDLE inputReadPipe = INVALID_HANDLE_VALUE;
-HANDLE childWritePipe = INVALID_HANDLE_VALUE;
-HANDLE readCompletedEvent = INVALID_HANDLE_VALUE;
-HANDLE readBeginEvent = INVALID_HANDLE_VALUE;
-HANDLE readThreadEndEvent = INVALID_HANDLE_VALUE;
-HANDLE readThreadHandle = INVALID_HANDLE_VALUE;
-HANDLE processHandle = INVALID_HANDLE_VALUE;
-HANDLE jobObject = INVALID_HANDLE_VALUE;
 
 //読込結果
 std::string readThreadResponse;
@@ -76,36 +78,20 @@ extern "C" __declspec(dllexport) BOOL __cdecl load(HGLOBAL h, long len)
 	ghostPath[len] = '\0';
 	GlobalFree(h);
 
-	//descript.txtを読む。設定をdescriptに書き込んでしまう
-	std::string fileName;
-	fileName.append(ghostPath);
-	fileName.append("ukastream.txt");
-	std::ifstream descriptStream(fileName);
-	if (descriptStream.fail())
+	//実行中DLLのパスを取得、拡張子をexeに変更して同名のファイルをSAORIとして起動
+	char path[MAX_PATH];
+	GetModuleFileName(dllHandle, path, MAX_PATH);
+	std::string modulePath = path;
+	size_t rSeparatorPos = modulePath.rfind("\\");
+	std::string moduleFileDirName = modulePath.substr(0, rSeparatorPos);
+	std::string moduleFileName = modulePath.substr(rSeparatorPos + 1);
+	std::string moduleFileNameWithoutExt = moduleFileName;
+	size_t cSeparatorPos = moduleFileName.find(".");
+	if (cSeparatorPos != std::string::npos)
 	{
-		//descriptが読めない
-		return FALSE;
+		moduleFileNameWithoutExt = moduleFileName.substr(0, cSeparatorPos);
 	}
-
-	//設定ファイル解析
-	std::string shioriFile;
-	std::string prefix = "shiori,";
-	std::string descriptLine;
-	while (std::getline(descriptStream, descriptLine))
-	{
-		if (descriptLine.find(prefix) == 0)
-		{
-			shioriFile = descriptLine.substr(prefix.size());
-			break;
-		}
-	}
-
-	descriptStream.close();
-	if (shioriFile.empty())
-	{
-		//shioriが無効
-		return FALSE;
-	}
+	std::string executableFileName = moduleFileDirName + "\\" + moduleFileNameWithoutExt + ".exe";
 
 	//継承可能ハンドルを設定
 	SECURITY_ATTRIBUTES securityAttributes = {};
@@ -143,10 +129,12 @@ extern "C" __declspec(dllexport) BOOL __cdecl load(HGLOBAL h, long len)
 
 	readThreadHandle = CreateThread(nullptr, 0, PipeReadThread, nullptr, 0, nullptr);
 
-	std::string shioriPath;
-	shioriPath.append(ghostPath);
-	shioriPath.append(shioriFile);
-	CreateProcess(shioriPath.c_str(), nullptr, nullptr, nullptr, TRUE, CREATE_NO_WINDOW, nullptr, nullptr, &startupInfo, &processInfo);
+	BOOL createResult = CreateProcess(executableFileName.c_str(), nullptr, nullptr, nullptr, TRUE, CREATE_NO_WINDOW, nullptr, nullptr, &startupInfo, &processInfo);
+	if (createResult == FALSE)
+	{
+		//プロセス起動失敗
+		return FALSE;
+	}
 	CloseHandle(processInfo.hThread);
 	processHandle = processInfo.hProcess;
 	assert(GetLastError() == S_OK);
