@@ -5,11 +5,11 @@ using System.Runtime.InteropServices;
 // アセンブリに関する一般的な情報は、次の方法で制御されます。
 // 制御されます。アセンブリに関連付けられている情報を変更するには、
 // これらの属性値を変更します。
-[assembly: AssemblyTitle("SampleSaori")]
+[assembly: AssemblyTitle("Kanahebi")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("SampleSaori")]
+[assembly: AssemblyProduct("Kanahebi")]
 [assembly: AssemblyCopyright("Copyright ©  2023")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
@@ -20,7 +20,7 @@ using System.Runtime.InteropServices;
 [assembly: ComVisible(false)]
 
 // このプロジェクトが COM に公開される場合、次の GUID が typelib の ID になります
-[assembly: Guid("71613447-14e6-4025-9dd6-d98ad2e26a6b")]
+[assembly: Guid("2b1b44f7-d927-49ac-84dc-387e9ca577c1")]
 
 // アセンブリのバージョン情報は次の 4 つの値で構成されています:
 //
